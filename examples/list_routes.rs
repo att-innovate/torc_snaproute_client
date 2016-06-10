@@ -29,7 +29,7 @@ use torc_snaproute_client::api;
 use std::env;
 
 fn main() {
-    let mut snaproute = "127.0.0.1:5909".to_string();
+    let mut snaproute = "127.0.0.1:8080".to_string();
 
     let args: Vec<_> = env::args().collect();
     if args.len() == 2 {

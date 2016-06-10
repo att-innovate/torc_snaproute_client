@@ -121,10 +121,10 @@ pub struct IPv4Route {
 }
 
 pub fn add_route(connect_string: &str, route_from: &str, route_to: &str) {
-    let (address, mask) = split_address_into_ip_and_mask(&route_from);
+    let (ip, mask) = split_address_into_ip_and_mask(&route_from);
     let nexthop = NextHopInfo{NextHopIp: route_to.to_string()};
     let ipv4route = IPv4Route{
-        DestinationNw: address,
+        DestinationNw: ip,
         NetworkMask: mask,
         Protocol: "STATIC".to_string(),
         NextHop: vec![nexthop]
@@ -137,9 +137,9 @@ pub fn add_route(connect_string: &str, route_from: &str, route_to: &str) {
 }
 
 pub fn delete_route(connect_string: &str, route_from: &str) {
-    let (address, mask) = split_address_into_ip_and_mask(&route_from);
+    let (ip, mask) = split_address_into_ip_and_mask(&route_from);
     let ipv4route = IPv4Route{
-        DestinationNw: address,
+        DestinationNw: ip,
         NetworkMask: mask,
         Protocol: "STATIC".to_string(),
         NextHop: vec![]
