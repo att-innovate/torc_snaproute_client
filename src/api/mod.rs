@@ -60,7 +60,10 @@ pub fn get_ports_stats(connect_string: &str) -> Vec<PortStat> {
                     connected = true
                 }
 
-                result.push(PortStat{id: id as i32 + 1, connected: connected})
+                result.push(PortStat {
+                    id: id as i32 + 1,
+                    connected: connected,
+                })
             }
         }
         _ => println!("error getting portstats"),
@@ -90,10 +93,13 @@ pub fn get_routes(connect_string: &str) -> Vec<Route> {
 
                 let nexthoplist = snap_object.search("NextHopList").unwrap().as_array().unwrap();
                 if nexthoplist.len() > 0 {
-                    to = nexthoplist[0].search("NextHopIp").unwrap().to_string();    
+                    to = nexthoplist[0].search("NextHopIp").unwrap().to_string();
                 }
-                
-                result.push(Route{from: from, to: to})
+
+                result.push(Route {
+                    from: from,
+                    to: to,
+                })
             }
         }
         _ => println!("error getting routes"),
@@ -102,8 +108,7 @@ pub fn get_routes(connect_string: &str) -> Vec<Route> {
     result
 }
 
-pub fn reset_routes(_connect_string: &str) {
-}
+pub fn reset_routes(_connect_string: &str) {}
 
 #[derive(Clone, RustcEncodable)]
 #[allow(non_snake_case)]
@@ -122,12 +127,12 @@ pub struct IPv4Route {
 
 pub fn add_route(connect_string: &str, route_from: &str, route_to: &str) {
     let (ip, mask) = split_address_into_ip_and_mask(&route_from);
-    let nexthop = NextHopInfo{NextHopIp: route_to.to_string()};
-    let ipv4route = IPv4Route{
+    let nexthop = NextHopInfo { NextHopIp: route_to.to_string() };
+    let ipv4route = IPv4Route {
         DestinationNw: ip,
         NetworkMask: mask,
         Protocol: "STATIC".to_string(),
-        NextHop: vec![nexthop]
+        NextHop: vec![nexthop],
     };
 
     let data = json::encode(&ipv4route).unwrap();
@@ -138,17 +143,17 @@ pub fn add_route(connect_string: &str, route_from: &str, route_to: &str) {
 
 pub fn delete_route(connect_string: &str, route_from: &str) {
     let (ip, mask) = split_address_into_ip_and_mask(&route_from);
-    let ipv4route = IPv4Route{
+    let ipv4route = IPv4Route {
         DestinationNw: ip,
         NetworkMask: mask,
         Protocol: "STATIC".to_string(),
-        NextHop: vec![]
+        NextHop: vec![],
     };
 
     let data = json::encode(&ipv4route).unwrap();
     let client = Client::new();
     let address = format!("http://{}/public/v1/config/IPv4Route", connect_string);
-    let _ = client.delete(&address).body(&data).header(ContentType::json()).send();    
+    let _ = client.delete(&address).body(&data).header(ContentType::json()).send();
 }
 
 fn split_address_into_ip_and_mask(address: &str) -> (String, String) {
@@ -156,12 +161,10 @@ fn split_address_into_ip_and_mask(address: &str) -> (String, String) {
     let mut ip = address.to_string();
     let mut mask = "255.255.255.255".to_string();
     if address.ends_with("/32") {
-        ip.truncate(len-3);
+        ip.truncate(len - 3);
     } else if address.ends_with("/24") {
-        ip.truncate(len-3);
+        ip.truncate(len - 3);
         mask = "255.255.255.0".to_string()
     }
     (ip.clone(), mask.clone())
 }
-
-
