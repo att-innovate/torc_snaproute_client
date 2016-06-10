@@ -1,0 +1,25 @@
+[package]
+name = "torc_snaproute_client"
+version = "0.1.0"
+authors = ["Marcel Neuhausler <marcel.neuhausler@att.com>"]
+
+[[example]]
+name="list_port_stats"
+path="examples/list_port_stats.rs"
+
+[[example]]
+name="modify_routes"
+path="examples/modify_routes.rs"
+
+[[example]]
+name="list_routes"
+path="examples/list_routes.rs"
+
+[dependencies]
+log = "0"
+
+[dependencies.hyper]
+version = "*"
+
+[dependencies.rustc-serialize]
+version = "*"
