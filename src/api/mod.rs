@@ -61,7 +61,7 @@ pub fn get_ports_stats(connect_string: &str) -> Vec<PortStat> {
                 }
 
                 result.push(PortStat {
-                    id: id as i32 + 1,
+                    id: id as i32,
                     connected: connected,
                 })
             }
