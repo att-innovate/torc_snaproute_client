@@ -1,7 +1,11 @@
 [package]
 name = "torc_snaproute_client"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Marcel Neuhausler <marcel.neuhausler@att.com>"]
+
+[[example]]
+name="initialize_switch"
+path="examples/initialize_switch.rs"
 
 [[example]]
 name="list_port_stats"
@@ -22,4 +26,7 @@ log = "0"
 version = "*"
 
 [dependencies.rustc-serialize]
+version = "*"
+
+[dependencies.yaml-rust]
 version = "*"

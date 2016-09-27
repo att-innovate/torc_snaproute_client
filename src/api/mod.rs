@@ -24,7 +24,9 @@ use hyper::Client;
 use hyper::status::StatusCode;
 use hyper::header::ContentType;
 use std::io::Read;
+use std::fs::File;
 use rustc_serialize::json::{self, Json};
+use yaml_rust::{Yaml, YamlLoader};
 
 pub struct PortStat {
     pub id: i32,
@@ -108,7 +110,82 @@ pub fn get_routes(connect_string: &str) -> Vec<Route> {
     result
 }
 
-pub fn reset_routes(_connect_string: &str) {}
+pub fn reset_routes(_connect_string: &str) {
+    println!("reset routes not implemented for snaproute")
+}
+
+
+#[derive(Clone, RustcEncodable)]
+#[allow(non_snake_case)]
+pub struct Port {
+    pub IntfRef: String,
+    pub BreakOutMode: String,
+}
+
+#[derive(Clone, RustcEncodable)]
+#[allow(non_snake_case)]
+pub struct SubPort {
+    pub IntfRef: String,
+    pub Speed: i32,
+    pub AdminState: String,
+}
+
+#[derive(Clone, RustcEncodable)]
+#[allow(non_snake_case)]
+pub struct Vlan {
+    pub VlanId: i32,
+    pub UntagIntfList: Vec<String>,
+}
+
+#[derive(Clone, RustcEncodable)]
+#[allow(non_snake_case)]
+pub struct IPv4Intf {
+    pub IntfRef: String,
+    pub IpAddr: String,
+}
+
+pub fn reset_and_initalize(connect_string: &str, config_file: &str) {
+    let client = Client::new();
+
+    let reset_config = format!("http://{}/public/v1/action/ResetConfig", connect_string);
+    let _ = client.post(&reset_config).send();
+
+    if config_file.is_empty() {
+        return
+    }
+
+    let config_port = format!("http://{}/public/v1/config/Port", connect_string);
+    let config_vlan = format!("http://{}/public/v1/config/Vlan", connect_string);
+    let config_interface = format!("http://{}/public/v1/config/IPv4Intf", connect_string);
+
+    let config = read_config_file(config_file);
+
+    let ports = read_ports(&config);
+    let sub_ports = read_sub_ports(&config);
+    let vlans = read_vlans(&config);
+    let interfaces = read_ipv4intf(&config);
+
+    for port in ports {
+        let data = json::encode(&port).unwrap();
+        let _ = client.patch(&config_port).body(&data).header(ContentType::json()).send();
+    }
+
+    for sub_port in sub_ports {
+        let data = json::encode(&sub_port).unwrap();
+        let _ = client.patch(&config_port).body(&data).header(ContentType::json()).send();
+    }
+
+    for vlan in vlans {
+        let data = json::encode(&vlan).unwrap();
+        let _ = client.post(&config_vlan).body(&data).header(ContentType::json()).send();
+    }
+
+    for interface in interfaces {
+        let data = json::encode(&interface).unwrap();
+        let _ = client.post(&config_interface).body(&data).header(ContentType::json()).send();
+    }
+
+}
 
 #[derive(Clone, RustcEncodable)]
 #[allow(non_snake_case)]
@@ -154,6 +231,113 @@ pub fn delete_route(connect_string: &str, route_from: &str) {
     let client = Client::new();
     let address = format!("http://{}/public/v1/config/IPv4Route", connect_string);
     let _ = client.delete(&address).body(&data).header(ContentType::json()).send();
+}
+
+
+fn read_config_file(config_file: &str) -> Yaml {
+    let mut file = match File::open(config_file) {
+        Ok(file) => file,
+        Err(err) => panic!(err.to_string()),
+    };
+
+    let mut content = String::new();
+    file.read_to_string(&mut content).unwrap();
+    let config = YamlLoader::load_from_str(&content).unwrap();
+    // Multi document support, doc is a yaml::Yaml
+    config[0].clone()
+}
+
+fn read_ports(config: &Yaml) -> Vec<Port> {
+    let mut result = Vec::new();
+
+    match config["ports"].is_badvalue() {
+        true => {}
+        false => {
+            let ports = config["ports"].as_vec().unwrap();
+            for port in ports {
+                match port["mode"].is_badvalue() {
+                    true => {}
+                    false => {
+                        let definition = Port {
+                            IntfRef: port["name"].as_str().unwrap().to_string(),
+                            BreakOutMode: port["mode"].as_str().unwrap().to_string(),
+                        };
+                        result.push(definition);
+                    }
+                }
+            }
+        }
+    }
+
+    result.clone()
+}
+
+fn read_sub_ports(config: &Yaml) -> Vec<SubPort> {
+    let mut result = Vec::new();
+
+    match config["ports"].is_badvalue() {
+        true => {}
+        false => {
+            let ports = config["ports"].as_vec().unwrap();
+            for port in ports {
+                match port["speed"].is_badvalue() {
+                    true => {}
+                    false => {
+                        let definition = SubPort {
+                            IntfRef: port["name"].as_str().unwrap().to_string(),
+                            Speed: port["speed"].as_i64().unwrap() as i32,
+                            AdminState: "UP".to_string(),
+                        };
+                        result.push(definition);
+                    }
+                }
+            }
+        }
+    }
+
+    result.clone()
+}
+
+fn read_vlans(config: &Yaml) -> Vec<Vlan> {
+    let mut result = Vec::new();
+
+    match config["vlans"].is_badvalue() {
+        true => {}
+        false => {
+            let vlans = config["vlans"].as_vec().unwrap();
+            for vlan in vlans {
+                let mut inf_list = Vec::new();
+                inf_list.push(vlan["ports"].as_str().unwrap().to_string());
+                let definition = Vlan {
+                    VlanId: vlan["id"].as_i64().unwrap() as i32,
+                    UntagIntfList: inf_list,
+                };
+                result.push(definition);
+            }
+        }
+    }
+
+    result.clone()
+}
+
+fn read_ipv4intf(config: &Yaml) -> Vec<IPv4Intf> {
+    let mut result = Vec::new();
+
+    match config["interfaces"].is_badvalue() {
+        true => {}
+        false => {
+            let interfaces = config["interfaces"].as_vec().unwrap();
+            for interface in interfaces {
+                let definition = IPv4Intf {
+                    IntfRef: format!("vlan{}", interface["vlan_id"].as_i64().unwrap()),
+                    IpAddr: interface["addr"].as_str().unwrap().to_string(),
+                };
+                result.push(definition);
+            }
+        }
+    }
+
+    result.clone()
 }
 
 fn split_address_into_ip_and_mask(address: &str) -> (String, String) {

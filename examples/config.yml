@@ -1,0 +1,15 @@
+type: wedge-40
+ports:
+    - name: fpPort1
+      mode: 1x40
+      speed: 40000
+    - name: fpPort2
+      mode: 4x10
+    - name: fpPort2s1
+      speed: 10000
+vlans:
+    - id: 100
+      ports: fpPort1,fpPort2s1
+interfaces:
+    - vlan_id: 100
+      addr: 10.250.3.30/24

@@ -35,14 +35,13 @@ fn main() {
     if args.len() == 2 {
         snaproute = args[1].clone();
     }
-    api::reset_routes(&snaproute);
 
     let routes = api::get_routes(&snaproute);
     for route in &routes {
         println!("Route {} --> {}", route.from, route.to);
     }
 
-    api::add_route(&snaproute, "172.16.0.12/32", "1.1.1.2");
+    api::add_route(&snaproute, "172.16.0.12/32", "10.250.3.20");
 
     let routes = api::get_routes(&snaproute);
     for route in &routes {
@@ -53,7 +52,7 @@ fn main() {
 
     let routes = api::get_routes(&snaproute);
     for route in &routes {
-        println!("Route {} --> {}", route.from, route.to);
+         println!("Route {} --> {}", route.from, route.to);
     }
 
 }
