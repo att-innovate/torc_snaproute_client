@@ -1,4 +1,5 @@
 format_strings = false
 reorder_imports = true
+write_mode = "Overwrite"
 max_width = 132
 ideal_width = 80
