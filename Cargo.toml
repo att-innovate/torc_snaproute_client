@@ -1,6 +1,6 @@
 [package]
 name = "torc_snaproute_client"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Marcel Neuhausler <marcel.neuhausler@att.com>"]
 
 [[example]]
