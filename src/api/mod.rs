@@ -21,12 +21,27 @@
 // THE SOFTWARE.
 
 use hyper::Client;
-use hyper::status::StatusCode;
 use hyper::header::ContentType;
-use std::io::Read;
-use std::fs::File;
+use hyper::status::StatusCode;
 use rustc_serialize::json::{self, Json};
+use std::fs::File;
+use std::io::Read;
 use yaml_rust::{Yaml, YamlLoader};
+
+macro_rules! log_request_error {
+    ($expr:expr) => (match $expr {
+        Result::Ok(response) => {
+            if response.status.to_u16() >= 400 {
+                println!("error code {}", response.status);
+            };
+            Some(response)
+        },
+        Result::Err(err) => {
+            println!("error {}", err);
+            None
+        }
+    })
+}
 
 pub struct PortStat {
     pub id: i32,
@@ -43,13 +58,17 @@ pub fn get_ports_stats(connect_string: &str) -> Vec<PortStat> {
 
     let client = Client::new();
     let address = format!("http://{}/public/v1/state/Ports", connect_string);
-    let mut response = client.get(&address).send().unwrap();
 
-    let mut body = String::new();
-    response.read_to_string(&mut body).unwrap();
+    let mut response = match log_request_error!(client.get(&address).send()) {
+        Some(response) => response,
+        None => return result,
+    };
 
     match response.status {
         StatusCode::Ok => {
+            let mut body = String::new();
+            response.read_to_string(&mut body).unwrap();
+
             let jsondata = Json::from_str(&body.clone()).unwrap();
             let snap_objects_raw = jsondata.as_object().unwrap();
             let snap_objects = snap_objects_raw.get("Objects").unwrap().as_array().unwrap();
@@ -68,7 +87,7 @@ pub fn get_ports_stats(connect_string: &str) -> Vec<PortStat> {
                 })
             }
         }
-        _ => println!("error getting portstats"),
+        _ => println!("error code {}", response.status),
     }
 
     result
@@ -79,13 +98,17 @@ pub fn get_routes(connect_string: &str) -> Vec<Route> {
 
     let client = Client::new();
     let address = format!("http://{}/public/v1/state/IPv4Routes", connect_string);
-    let mut response = client.get(&address).send().unwrap();
 
-    let mut body = String::new();
-    response.read_to_string(&mut body).unwrap();
+    let mut response = match log_request_error!(client.get(&address).send()) {
+        Some(response) => response,
+        None => return result,
+    };
 
     match response.status {
         StatusCode::Ok => {
+            let mut body = String::new();
+            response.read_to_string(&mut body).unwrap();
+
             let jsondata = Json::from_str(&body.clone()).unwrap();
             let snap_objects_raw = jsondata.as_object().unwrap();
             let snap_objects = snap_objects_raw.get("Objects").unwrap().as_array().unwrap();
@@ -104,7 +127,7 @@ pub fn get_routes(connect_string: &str) -> Vec<Route> {
                 })
             }
         }
-        _ => println!("error getting routes"),
+        _ => println!("error code {}", response.status),
     }
 
     result
@@ -148,10 +171,10 @@ pub fn reset_and_initalize(connect_string: &str, config_file: &str) {
     let client = Client::new();
 
     let reset_config = format!("http://{}/public/v1/action/ResetConfig", connect_string);
-    let _ = client.post(&reset_config).send();
+    log_request_error!(client.post(&reset_config).send());
 
     if config_file.is_empty() {
-        return
+        return;
     }
 
     let config_port = format!("http://{}/public/v1/config/Port", connect_string);
@@ -167,22 +190,22 @@ pub fn reset_and_initalize(connect_string: &str, config_file: &str) {
 
     for port in ports {
         let data = json::encode(&port).unwrap();
-        let _ = client.patch(&config_port).body(&data).header(ContentType::json()).send();
+        log_request_error!(client.patch(&config_port).body(&data).header(ContentType::json()).send());
     }
 
     for sub_port in sub_ports {
         let data = json::encode(&sub_port).unwrap();
-        let _ = client.patch(&config_port).body(&data).header(ContentType::json()).send();
+        log_request_error!(client.patch(&config_port).body(&data).header(ContentType::json()).send());
     }
 
     for vlan in vlans {
         let data = json::encode(&vlan).unwrap();
-        let _ = client.post(&config_vlan).body(&data).header(ContentType::json()).send();
+        log_request_error!(client.post(&config_vlan).body(&data).header(ContentType::json()).send());
     }
 
     for interface in interfaces {
         let data = json::encode(&interface).unwrap();
-        let _ = client.post(&config_interface).body(&data).header(ContentType::json()).send();
+        log_request_error!(client.post(&config_interface).body(&data).header(ContentType::json()).send());
     }
 
 }
@@ -215,7 +238,7 @@ pub fn add_route(connect_string: &str, route_from: &str, route_to: &str) {
     let data = json::encode(&ipv4route).unwrap();
     let client = Client::new();
     let address = format!("http://{}/public/v1/config/IPv4Route", connect_string);
-    let _ = client.post(&address).body(&data).header(ContentType::json()).send();
+    log_request_error!(client.post(&address).body(&data).header(ContentType::json()).send());
 }
 
 pub fn delete_route(connect_string: &str, route_from: &str) {
@@ -230,7 +253,7 @@ pub fn delete_route(connect_string: &str, route_from: &str) {
     let data = json::encode(&ipv4route).unwrap();
     let client = Client::new();
     let address = format!("http://{}/public/v1/config/IPv4Route", connect_string);
-    let _ = client.delete(&address).body(&data).header(ContentType::json()).send();
+    log_request_error!(client.delete(&address).body(&data).header(ContentType::json()).send());
 }
 
 
